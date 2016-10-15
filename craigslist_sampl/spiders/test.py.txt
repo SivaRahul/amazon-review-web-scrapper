@@ -1,0 +1,57 @@
+from scrapy.spiders import CrawlSpider, Rule
+from scrapy.linkextractors.sgml import SgmlLinkExtractor
+from scrapy.selector import HtmlXPathSelector
+from craigslist_sampl.items import CraigslistSampleItem
+import re as r
+
+class MySpider(CrawlSpider):
+    name = "tpo"
+    #allowed_domains = ["sfbay.craigslist.org"]
+    #start_urls = ["http://sfbay.craigslist.org/search/npo"]
+    #start_urls =["http://www.amazon.in/product-reviews/B01A8DQSW2/ref=cm_cr_dp_see_all_summary?ie=UTF8&showViewpoints=1&sortBy=helpful"]
+    #start_urls = ["http://www.amazon.in/product-reviews/B01B4KRAQQ/ref=cm_cr_dp_see_all_summary?ie=UTF8&showViewpoints=1&sortBy=helpful"]
+    start_urls = ["http://www.amazon.in/product-reviews/B00NTYJQM2/ref=cm_cr_dp_see_all_top?ie=UTF8&showViewpoints=1&sortBy=helpful"]
+    
+    '''rules = (
+        Rule(SgmlLinkExtractor(allow=(), restrict_xpaths=('//a[@class="button next"]',)), callback="parse_items", follow= True),
+    )'''
+
+    rules = (
+        Rule(SgmlLinkExtractor(allow=(), restrict_xpaths=('//li[@class="page-button"]',)), callback="parse_items", follow= True),
+    )
+
+    def parse_items(self, response):
+        hxs = HtmlXPathSelector(response)
+        titles = hxs.xpath('//div[@class="a-section review"]')
+        items = []
+        for i in titles:
+            item=CraigslistSampleItem()
+            item["name"]=(i.xpath("div[@class='a-row']//text()").extract())[3]; 
+
+            tmp1=str(i)
+            tmp2=((r.search(r.compile('(id)\=\"\w+\"'),tmp1).group()).split('id='))[1]
+            item["iD"]=tmp2
+
+            item["is_certified"]=i.re('(Verified Purchase)')
+
+            item["title"]=(i.xpath("div[@class='a-row']//text()").extract())[1];
+
+            tmp1=(i.re('(\d+\ (people))'))
+            if(tmp1):
+                tmp2=(r.search(r.compile('(\d+)'),str(tmp1))).group()
+                item["upvotes"]=tmp2
+            else:
+                item["upvotes"]=0
+
+            item["rating"]=(i.xpath("div[@class='a-row']//text()"))[0].re('(\d\.\d+)');
+
+            item["date"]=(i.xpath("div[@class='a-row']//text()")).re('(\d+\ \w+\ \d+)');
+
+            item["review"]=i.xpath("div[@class='a-row review-data']//text()").extract()
+
+            items.append(item)
+        return(items)
+            
+            
+            
+
